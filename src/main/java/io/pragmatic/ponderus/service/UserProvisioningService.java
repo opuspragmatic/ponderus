@@ -1,13 +1,13 @@
-package io.pragmatic.coponderus.service;
+package io.pragmatic.ponderus.service;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import io.pragmatic.coponderus.domain.Plan;
-import io.pragmatic.coponderus.domain.User;
-import io.pragmatic.coponderus.repository.UserRepository;
+import io.pragmatic.ponderus.domain.Plan;
+import io.pragmatic.ponderus.domain.User;
+import io.pragmatic.ponderus.repository.UserRepository;
 import lombok.AllArgsConstructor;
 
 @Service

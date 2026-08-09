@@ -1,4 +1,4 @@
-package io.pragmatic.coponderus.domain;
+package io.pragmatic.ponderus.domain;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;

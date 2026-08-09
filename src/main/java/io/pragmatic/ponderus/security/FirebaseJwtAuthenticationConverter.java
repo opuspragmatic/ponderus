@@ -1,12 +1,12 @@
-package io.pragmatic.coponderus.security;
+package io.pragmatic.ponderus.security;
 
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Component;
 
-import io.pragmatic.coponderus.domain.User;
-import io.pragmatic.coponderus.service.UserProvisioningService;
+import io.pragmatic.ponderus.domain.User;
+import io.pragmatic.ponderus.service.UserProvisioningService;
 
 @Component
 public class FirebaseJwtAuthenticationConverter implements Converter<Jwt, AbstractAuthenticationToken> {

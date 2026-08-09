@@ -1,10 +1,10 @@
-package io.pragmatic.coponderus.security;
+package io.pragmatic.ponderus.security;
 
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.oauth2.jwt.Jwt;
 
-import io.pragmatic.coponderus.domain.User;
+import io.pragmatic.ponderus.domain.User;
 
 /**
  * Authentication dont le principal est directement notre User interne

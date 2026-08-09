@@ -1,4 +1,4 @@
-package io.pragmatic.coponderus.config;
+package io.pragmatic.ponderus.config;
 
 import java.io.IOException;
 

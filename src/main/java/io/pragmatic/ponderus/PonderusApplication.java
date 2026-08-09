@@ -1,12 +1,12 @@
-package io.pragmatic.coponderus;
+package io.pragmatic.ponderus;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class CoponderusApplication {
+public class PonderusApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(CoponderusApplication.class, args);
+        SpringApplication.run(PonderusApplication.class, args);
     }
 }

@@ -1,4 +1,4 @@
-package io.pragmatic.coponderus.domain;
+package io.pragmatic.ponderus.domain;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -43,6 +43,7 @@ public class User {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
+    @Builder.Default
     private Plan plan = Plan.FREE;
 
     @CreationTimestamp

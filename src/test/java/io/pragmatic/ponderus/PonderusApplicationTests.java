@@ -1,10 +1,10 @@
-package io.pragmatic.coponderus;
+package io.pragmatic.ponderus;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
-class CoponderusApplicationTests {
+class PonderusApplicationTests {
 
     @Test
     void contextLoads() {

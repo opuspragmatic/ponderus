@@ -1,0 +1,13 @@
+.git
+.github
+.gradle
+.vscode
+.venv
+build
+ci
+deploy.sh
+*.md
+.env
+.DS_Store
+*.log
+ponderus-firebase-adminsdk.json

@@ -1,4 +1,4 @@
-package io.pragmatic.coponderus.domain;
+package io.pragmatic.ponderus.domain;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -14,12 +14,17 @@ import lombok.Setter;
 
 import java.util.UUID;
 
+/**
+ * Une des N options comparées dans un projet (ex-"Maison A/B").
+ * Nommée ComparisonOption plutôt que Option pour éviter toute ambiguïté
+ * de lecture avec java.util.Optional dans le reste du code.
+ */
 @Entity
-@Table(name = "criteria")
+@Table(name = "options")
 @Getter
 @Setter
 @NoArgsConstructor
-public class Criterion {
+public class ComparisonOption {
 
     @Id
     @GeneratedValue
@@ -30,15 +35,7 @@ public class Criterion {
     private Project project;
 
     @Column(nullable = false)
-    private String label;
-
-    /** Importance du critère, de 1 à 5. */
-    @Column(nullable = false)
-    private Integer weight;
-
-    /** Si vrai, un score sous le seuil du projet disqualifie l'option. */
-    @Column(nullable = false)
-    private boolean elim;
+    private String name;
 
     @Column(nullable = false)
     private Integer position;

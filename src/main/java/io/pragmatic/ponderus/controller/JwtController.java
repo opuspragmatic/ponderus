@@ -1,10 +1,10 @@
-package io.pragmatic.coponderus.controller;
+package io.pragmatic.ponderus.controller;
 
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import io.pragmatic.coponderus.domain.User;
+import io.pragmatic.ponderus.domain.User;
 
 
 @RestController

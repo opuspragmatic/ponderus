@@ -3,12 +3,12 @@ spring:
     import: optional:file:.env[.properties]
 
   application:
-    name: coponderus-backend
+    name: ponderus-backend
 
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${DB_HOST:127.0.0.1}:${DB_PORT:5432}/${DB_NAME:coponderus}}
-    username: ${SPRING_DATASOURCE_USERNAME:${DB_USER:coponderus}}
-    password: ${SPRING_DATASOURCE_PASSWORD:${DB_PASSWORD:coponderus}}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql:///${DB_NAME:ponderus}?cloudSqlInstance=${INSTANCE_CONNECTION_NAME}&socketFactory=com.google.cloud.sql.postgres.SocketFactory}
+    username: ${SPRING_DATASOURCE_USERNAME:${DB_USER:ponderus}}
+    password: ${SPRING_DATASOURCE_PASSWORD:${DB_PASSWORD:ponderus}}
     driver-class-name: org.postgresql.Driver
 
   jpa:
@@ -29,7 +29,7 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: https://securetoken.google.com/coponderus
+          issuer-uri: https://securetoken.google.com/ponderus
           jwk-set-uri: https://www.googleapis.com/robot/v1/metadata/jwk/securetoken@system.gserviceaccount.com
 server:
   port: 8080
@@ -37,3 +37,9 @@ server:
 logging:
   level:
     org.hibernate.SQL: debug
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info

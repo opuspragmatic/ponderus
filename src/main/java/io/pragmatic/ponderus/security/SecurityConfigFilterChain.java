@@ -1,4 +1,4 @@
-package io.pragmatic.coponderus.security;
+package io.pragmatic.ponderus.security;
 
 import java.util.List;
 
@@ -27,6 +27,7 @@ public class SecurityConfigFilterChain {
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                .requestMatchers("/actuator/**").permitAll()
                 .requestMatchers("/api/**").authenticated()
                 .anyRequest().permitAll()
             )
