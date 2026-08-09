@@ -35,13 +35,16 @@ dependencies {
     runtimeOnly 'org.postgresql:postgresql'
 
     // Migrations
-    implementation 'org.flywaydb:flyway-core'
+    implementation 'org.springframework.boot:spring-boot-starter-flyway'
     implementation 'org.flywaydb:flyway-database-postgresql'
 
     // Boilerplate
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
 
+    // Monitoring
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    
     // Tests
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
 }

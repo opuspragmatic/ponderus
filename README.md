@@ -1,4 +1,4 @@
-# coponderus
+# ponderus
 
 Backend du comparateur pondéré — un outil pour comparer plusieurs options (maisons, ou n'importe quelle décision structurée) selon des critères pondérés, avec analyse de sensibilité et critères éliminatoires.
 
@@ -45,8 +45,8 @@ L'API démarre sur `http://localhost:8080`.
 ## Structure
 
 ```
-src/main/java/io/pragmatic/coponderus/
-  CoponderusApplication.java
+src/main/java/io/pragmatic/ponderus/
+  ponderusApplication.java
   domain/              -> entités JPA (User, Project, ComparisonOption, Criterion, Score)
 src/main/resources/
   application.yml
