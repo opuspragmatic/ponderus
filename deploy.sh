@@ -31,7 +31,7 @@ set -euo pipefail
 # --------------------------------------------------------------------------
 
 PROJECT_ID="${PROJECT_ID:-$(gcloud config get-value project 2>/dev/null)}"
-REGION="${REGION:-europe-west1}"
+REGION="${REGION:-northamerica-northeast1}"
 SERVICE_NAME="${SERVICE_NAME:-ponderus-backend}"
 
 AR_REPO="${AR_REPO:-ponderus}"                 # nom du repo Artifact Registry
@@ -45,8 +45,9 @@ IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${AR_REPO}/${SERVICE_NAME}:${IMAGE
 SERVICE_ACCOUNT="${SERVICE_ACCOUNT:-}"
 
 # Nom de l'instance Cloud SQL au format PROJECT:REGION:INSTANCE.
-# Laisser vide si la base est jointe autrement (IP publique/VPC connector).
-CLOUD_SQL_INSTANCE="${CLOUD_SQL_INSTANCE:-}"
+# Requis : c'est cette valeur qui alimente INSTANCE_CONNECTION_NAME, utilisee
+# par le Cloud SQL Socket Factory (voir datasource.url dans application.yml).
+CLOUD_SQL_INSTANCE="${CLOUD_SQL_INSTANCE:?Variable CLOUD_SQL_INSTANCE requise (format PROJECT:REGION:INSTANCE)}"
 
 # Ressources Cloud Run
 CPU="${CPU:-1}"
@@ -74,8 +75,6 @@ DB_PASSWORD_SECRET="${DB_PASSWORD_SECRET:-db-password}"
 # --------------------------------------------------------------------------
 # Variables d'environnement non sensibles pour l'application (application.yml)
 # --------------------------------------------------------------------------
-DB_HOST="${DB_HOST:?Variable DB_HOST requise (hote/IP de la base Postgres)}"
-DB_PORT="${DB_PORT:-5432}"
 DB_NAME="${DB_NAME:-ponderus}"
 DB_USER="${DB_USER:-ponderus}"
 
@@ -83,8 +82,19 @@ DB_USER="${DB_USER:-ponderus}"
 # Verifications
 # --------------------------------------------------------------------------
 
-log() { echo "[deploy] $*"; }
-die() { echo "[deploy] ERREUR: $*" >&2; exit 1; }
+# Couleurs desactivees si la sortie n'est pas un terminal (ex: logs Cloud Build).
+if [ -t 1 ]; then
+    COLOR_GREEN=$'\033[0;32m'
+    COLOR_RED=$'\033[0;31m'
+    COLOR_RESET=$'\033[0m'
+else
+    COLOR_GREEN=""
+    COLOR_RED=""
+    COLOR_RESET=""
+fi
+
+log() { echo "${COLOR_GREEN}[deploy]${COLOR_RESET} $*"; }
+die() { echo "${COLOR_RED}[deploy] ERREUR: $*${COLOR_RESET}" >&2; exit 1; }
 
 command -v gcloud >/dev/null 2>&1 || die "gcloud CLI introuvable. Installez le Google Cloud SDK."
 [ -n "$PROJECT_ID" ] || die "PROJECT_ID non defini. Lancez 'gcloud config set project <id>' ou export PROJECT_ID=..."
@@ -117,10 +127,11 @@ ensure_artifact_registry() {
 }
 
 build_and_push() {
-    log "Build de l'image via Cloud Build (Dockerfile a la racine)..."
+    log "Build de l'image via Cloud Build (cloudbuild.yaml, BuildKit active)..."
     gcloud builds submit \
         --project "${PROJECT_ID}" \
-        --tag "${IMAGE}" \
+        --config cloudbuild.yaml \
+        --substitutions "_IMAGE=${IMAGE}" \
         .
 }
 
@@ -137,8 +148,9 @@ deploy() {
         --memory "${MEMORY}"
         --min-instances "${MIN_INSTANCES}"
         --max-instances "${MAX_INSTANCES}"
-        --set-env-vars "DB_HOST=${DB_HOST},DB_PORT=${DB_PORT},DB_NAME=${DB_NAME},DB_USER=${DB_USER}"
+        --set-env-vars "DB_NAME=${DB_NAME},DB_USER=${DB_USER},INSTANCE_CONNECTION_NAME=${CLOUD_SQL_INSTANCE}"
         --set-secrets "SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD_SECRET}:latest"
+        --add-cloudsql-instances "${CLOUD_SQL_INSTANCE}"
     )
 
     if [ "${ALLOW_UNAUTHENTICATED}" = "true" ]; then
@@ -149,10 +161,6 @@ deploy() {
 
     if [ -n "${SERVICE_ACCOUNT}" ]; then
         deploy_args+=(--service-account "${SERVICE_ACCOUNT}")
-    fi
-
-    if [ -n "${CLOUD_SQL_INSTANCE}" ]; then
-        deploy_args+=(--add-cloudsql-instances "${CLOUD_SQL_INSTANCE}")
     fi
 
     gcloud "${deploy_args[@]}"

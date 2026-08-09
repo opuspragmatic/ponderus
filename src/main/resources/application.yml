@@ -6,7 +6,7 @@ spring:
     name: ponderus-backend
 
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${DB_HOST:127.0.0.1}:${DB_PORT:5432}/${DB_NAME:ponderus}}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql:///${DB_NAME:ponderus}?cloudSqlInstance=${INSTANCE_CONNECTION_NAME}&socketFactory=com.google.cloud.sql.postgres.SocketFactory}
     username: ${SPRING_DATASOURCE_USERNAME:${DB_USER:ponderus}}
     password: ${SPRING_DATASOURCE_PASSWORD:${DB_PASSWORD:ponderus}}
     driver-class-name: org.postgresql.Driver
