@@ -16,6 +16,7 @@ import io.pragmatic.ponderus.domain.Option;
 import io.pragmatic.ponderus.domain.Project;
 import io.pragmatic.ponderus.domain.Score;
 import io.pragmatic.ponderus.domain.User;
+import io.pragmatic.ponderus.dto.CriterionResponse;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 
@@ -124,6 +125,25 @@ class CriterionRepositoryIntegrationTest extends AbstractPostgresIntegrationTest
         em.clear();
 
         assertThat(countScores()).isZero();
+    }
+
+    @Test
+    void criterionResponse_mapsProjectId_evenWhenProjectProxyDetached() {
+        // Reproduit le mapping fait dans le controller (hors transaction de service,
+        // open-in-view=false) : l'entité est détachée et son projet est un proxy LAZY.
+        Project project = persistProject();
+        Criterion criterion = persistCriterion(project, "Prix", 3, 0);
+        UUID criterionId = criterion.getId();
+        em.flush();
+        em.clear();
+
+        Criterion reloaded = criterionRepository.findById(criterionId).orElseThrow();
+        em.clear(); // détache : plus aucune session ne couvre le proxy project
+
+        CriterionResponse response = CriterionResponse.from(reloaded);
+        assertThat(response.projectId()).isEqualTo(project.getId());
+        assertThat(response.label()).isEqualTo("Prix");
+        assertThat(response.weight()).isEqualTo(3);
     }
 
     private long countScores() {
