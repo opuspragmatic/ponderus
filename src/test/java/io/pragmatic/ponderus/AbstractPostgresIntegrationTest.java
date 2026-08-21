@@ -5,8 +5,6 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import io.pragmatic.ponderus.config.FirebaseConfig;
 
@@ -15,17 +13,27 @@ import io.pragmatic.ponderus.config.FirebaseConfig;
  * et laisse Flyway appliquer les migrations, pour tester le schéma réel
  * (notamment les contraintes ON DELETE CASCADE et UNIQUE).
  *
- * FirebaseConfig est remplacé par un mock pour éviter l'initialisation du
+ * <p>Le conteneur suit le motif « singleton » : démarré une seule fois au
+ * chargement de la classe et jamais arrêté explicitement (Ryuk le nettoie à la
+ * fin de la JVM). C'est indispensable car le contexte Spring est mis en cache
+ * et partagé entre toutes les classes de test ayant cette configuration : un
+ * conteneur géré par {@code @Testcontainers} serait arrêté après la première
+ * classe alors que le contexte (et sa datasource) reste réutilisé par les
+ * suivantes, provoquant des « Could not open JPA EntityManager ».
+ *
+ * <p>FirebaseConfig est remplacé par un mock pour éviter l'initialisation du
  * SDK Firebase (qui exige des credentials Google indisponibles en test).
  */
 @SpringBootTest
-@Testcontainers
 public abstract class AbstractPostgresIntegrationTest {
 
-    @Container
     @SuppressWarnings("resource")
     static final PostgreSQLContainer<?> POSTGRES =
             new PostgreSQLContainer<>("postgres:16-alpine");
+
+    static {
+        POSTGRES.start();
+    }
 
     @DynamicPropertySource
     static void datasourceProps(DynamicPropertyRegistry registry) {
