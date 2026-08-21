@@ -11,7 +11,6 @@ import io.pragmatic.ponderus.domain.Project;
 import io.pragmatic.ponderus.domain.User;
 import io.pragmatic.ponderus.dto.OptionRequest;
 import io.pragmatic.ponderus.repository.OptionRepository;
-import io.pragmatic.ponderus.repository.ProjectRepository;
 import io.pragmatic.ponderus.web.ResourceNotFoundException;
 import lombok.AllArgsConstructor;
 
@@ -19,27 +18,29 @@ import lombok.AllArgsConstructor;
  * Logique métier des options, rattachées à un projet.
  * Toutes les opérations sont scopées par utilisateur : agir sur un projet
  * (ou une option) qui n'appartient pas à l'appelant renvoie 404.
+ * Le contrôle de propriété du projet est délégué à {@link ProjectService}
+ * pour ne pas dupliquer la règle d'isolation multi-tenant.
  */
 @Service
 @AllArgsConstructor
 public class OptionService {
 
     private final OptionRepository optionRepository;
-    private final ProjectRepository projectRepository;
+    private final ProjectService projectService;
 
     @Transactional(readOnly = true)
     public List<Option> findByProject(User user, UUID projectId) {
-        requireOwnedProject(user, projectId);
-        return optionRepository.findByProjectIdOrderByPositionAsc(projectId);
+        projectService.findOne(user, projectId); // 404 si le projet n'est pas à l'utilisateur
+        return optionRepository.findByProjectIdOrderByPositionAscIdAsc(projectId);
     }
 
     @Transactional
     public Option create(User user, UUID projectId, OptionRequest request) {
-        Project project = requireOwnedProject(user, projectId);
+        Project project = projectService.findOne(user, projectId);
 
         int position = request.position() != null
                 ? request.position()
-                : (int) optionRepository.countByProjectId(projectId);
+                : optionRepository.findMaxPositionByProjectId(projectId) + 1;
 
         Option option = Option.builder()
                 .project(project)
@@ -52,7 +53,7 @@ public class OptionService {
 
     @Transactional
     public Option update(User user, UUID projectId, UUID optionId, OptionRequest request) {
-        requireOwnedProject(user, projectId);
+        projectService.findOne(user, projectId);
         Option option = requireOption(projectId, optionId);
 
         option.setName(request.name());
@@ -64,16 +65,10 @@ public class OptionService {
 
     @Transactional
     public void delete(User user, UUID projectId, UUID optionId) {
-        requireOwnedProject(user, projectId);
+        projectService.findOne(user, projectId);
         Option option = requireOption(projectId, optionId);
         // La suppression cascade sur les scores associés (FK ON DELETE CASCADE).
         optionRepository.delete(option);
-    }
-
-    /** Charge le projet s'il appartient à l'utilisateur, sinon 404. */
-    private Project requireOwnedProject(User user, UUID projectId) {
-        return projectRepository.findByIdAndUserId(projectId, user.getId())
-                .orElseThrow(() -> new ResourceNotFoundException("Projet introuvable : " + projectId));
     }
 
     /** Charge l'option si elle appartient bien au projet, sinon 404. */

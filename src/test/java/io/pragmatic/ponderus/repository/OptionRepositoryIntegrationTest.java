@@ -17,6 +17,7 @@ import io.pragmatic.ponderus.domain.Option;
 import io.pragmatic.ponderus.domain.Project;
 import io.pragmatic.ponderus.domain.Score;
 import io.pragmatic.ponderus.domain.User;
+import io.pragmatic.ponderus.dto.OptionResponse;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 
@@ -61,10 +62,40 @@ class OptionRepositoryIntegrationTest extends AbstractPostgresIntegrationTest {
         persistOption(project, "Première", 0);
         persistOption(project, "Troisième", 2);
 
-        List<Option> options = optionRepository.findByProjectIdOrderByPositionAsc(project.getId());
+        List<Option> options = optionRepository.findByProjectIdOrderByPositionAscIdAsc(project.getId());
 
         assertThat(options).extracting(Option::getName)
                 .containsExactly("Première", "Deuxième", "Troisième");
+    }
+
+    @Test
+    void findMaxPositionByProjectId_returnsMax_orMinusOneWhenEmpty() {
+        Project empty = persistProject();
+        assertThat(optionRepository.findMaxPositionByProjectId(empty.getId())).isEqualTo(-1);
+
+        Project project = persistProject();
+        persistOption(project, "A", 0);
+        persistOption(project, "C", 2);
+        assertThat(optionRepository.findMaxPositionByProjectId(project.getId())).isEqualTo(2);
+    }
+
+    @Test
+    void optionResponse_mapsProjectId_evenWhenProjectProxyDetached() {
+        // Reproduit le mapping fait dans le controller (hors transaction de service,
+        // open-in-view=false) : l'entité est détachée et son projet est un proxy LAZY
+        // non initialisé. OptionResponse.from ne doit lire que l'id, sans le charger.
+        Project project = persistProject();
+        Option option = persistOption(project, "Maison A", 0);
+        UUID optionId = option.getId();
+        em.flush();
+        em.clear();
+
+        Option reloaded = optionRepository.findById(optionId).orElseThrow();
+        em.clear(); // détache : plus aucune session ne couvre le proxy project
+
+        OptionResponse response = OptionResponse.from(reloaded);
+        assertThat(response.projectId()).isEqualTo(project.getId());
+        assertThat(response.name()).isEqualTo("Maison A");
     }
 
     @Test

@@ -23,7 +23,6 @@ import io.pragmatic.ponderus.domain.Project;
 import io.pragmatic.ponderus.domain.User;
 import io.pragmatic.ponderus.dto.OptionRequest;
 import io.pragmatic.ponderus.repository.OptionRepository;
-import io.pragmatic.ponderus.repository.ProjectRepository;
 import io.pragmatic.ponderus.web.ResourceNotFoundException;
 
 @ExtendWith(MockitoExtension.class)
@@ -33,7 +32,7 @@ class OptionServiceTest {
     private OptionRepository optionRepository;
 
     @Mock
-    private ProjectRepository projectRepository;
+    private ProjectService projectService;
 
     @InjectMocks
     private OptionService optionService;
@@ -52,12 +51,20 @@ class OptionServiceTest {
         return project;
     }
 
+    private void projectOwned() {
+        when(projectService.findOne(user, projectId)).thenReturn(ownedProject());
+    }
+
+    private void projectNotOwned() {
+        when(projectService.findOne(user, projectId))
+                .thenThrow(new ResourceNotFoundException("Projet introuvable : " + projectId));
+    }
+
     @Test
     void findByProject_returnsOrderedOptions_whenProjectOwned() {
         Option option = new Option();
-        when(projectRepository.findByIdAndUserId(projectId, user.getId()))
-                .thenReturn(Optional.of(ownedProject()));
-        when(optionRepository.findByProjectIdOrderByPositionAsc(projectId))
+        projectOwned();
+        when(optionRepository.findByProjectIdOrderByPositionAscIdAsc(projectId))
                 .thenReturn(List.of(option));
 
         assertThat(optionService.findByProject(user, projectId)).containsExactly(option);
@@ -65,18 +72,16 @@ class OptionServiceTest {
 
     @Test
     void findByProject_throwsNotFound_whenProjectNotOwned() {
-        when(projectRepository.findByIdAndUserId(projectId, user.getId()))
-                .thenReturn(Optional.empty());
+        projectNotOwned();
 
         assertThatThrownBy(() -> optionService.findByProject(user, projectId))
                 .isInstanceOf(ResourceNotFoundException.class);
     }
 
     @Test
-    void create_appendsAtEnd_whenPositionOmitted() {
-        when(projectRepository.findByIdAndUserId(projectId, user.getId()))
-                .thenReturn(Optional.of(ownedProject()));
-        when(optionRepository.countByProjectId(projectId)).thenReturn(2L);
+    void create_appendsAfterMaxPosition_whenPositionOmitted() {
+        projectOwned();
+        when(optionRepository.findMaxPositionByProjectId(projectId)).thenReturn(1);
         when(optionRepository.save(any(Option.class))).thenAnswer(inv -> inv.getArgument(0));
 
         Option created = optionService.create(user, projectId, new OptionRequest("Maison C", null));
@@ -86,9 +91,19 @@ class OptionServiceTest {
     }
 
     @Test
+    void create_startsAtZero_whenProjectHasNoOption() {
+        projectOwned();
+        when(optionRepository.findMaxPositionByProjectId(projectId)).thenReturn(-1);
+        when(optionRepository.save(any(Option.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Option created = optionService.create(user, projectId, new OptionRequest("Première", null));
+
+        assertThat(created.getPosition()).isEqualTo(0);
+    }
+
+    @Test
     void create_usesExplicitPosition_whenProvided() {
-        when(projectRepository.findByIdAndUserId(projectId, user.getId()))
-                .thenReturn(Optional.of(ownedProject()));
+        projectOwned();
         when(optionRepository.save(any(Option.class))).thenAnswer(inv -> inv.getArgument(0));
 
         Option created = optionService.create(user, projectId, new OptionRequest("Maison A", 5));
@@ -98,8 +113,7 @@ class OptionServiceTest {
 
     @Test
     void create_throwsNotFound_whenProjectNotOwned() {
-        when(projectRepository.findByIdAndUserId(projectId, user.getId()))
-                .thenReturn(Optional.empty());
+        projectNotOwned();
 
         assertThatThrownBy(() -> optionService.create(user, projectId, new OptionRequest("X", null)))
                 .isInstanceOf(ResourceNotFoundException.class);
@@ -112,8 +126,7 @@ class OptionServiceTest {
         Option existing = new Option();
         existing.setName("Ancien");
         existing.setPosition(0);
-        when(projectRepository.findByIdAndUserId(projectId, user.getId()))
-                .thenReturn(Optional.of(ownedProject()));
+        projectOwned();
         when(optionRepository.findByIdAndProjectId(optionId, projectId))
                 .thenReturn(Optional.of(existing));
         when(optionRepository.save(any(Option.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -127,8 +140,7 @@ class OptionServiceTest {
     @Test
     void update_throwsNotFound_whenOptionNotInProject() {
         UUID optionId = UUID.randomUUID();
-        when(projectRepository.findByIdAndUserId(projectId, user.getId()))
-                .thenReturn(Optional.of(ownedProject()));
+        projectOwned();
         when(optionRepository.findByIdAndProjectId(optionId, projectId))
                 .thenReturn(Optional.empty());
 
@@ -140,8 +152,7 @@ class OptionServiceTest {
     void delete_removesOptionOfOwnedProject() {
         UUID optionId = UUID.randomUUID();
         Option existing = new Option();
-        when(projectRepository.findByIdAndUserId(projectId, user.getId()))
-                .thenReturn(Optional.of(ownedProject()));
+        projectOwned();
         when(optionRepository.findByIdAndProjectId(optionId, projectId))
                 .thenReturn(Optional.of(existing));
 
@@ -155,8 +166,7 @@ class OptionServiceTest {
     @Test
     void delete_throwsNotFound_whenProjectNotOwned() {
         UUID optionId = UUID.randomUUID();
-        when(projectRepository.findByIdAndUserId(projectId, user.getId()))
-                .thenReturn(Optional.empty());
+        projectNotOwned();
 
         assertThatThrownBy(() -> optionService.delete(user, projectId, optionId))
                 .isInstanceOf(ResourceNotFoundException.class);
