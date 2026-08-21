@@ -3,6 +3,7 @@ package io.pragmatic.ponderus.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -14,6 +15,7 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -75,52 +77,35 @@ class ScoreServiceTest {
     }
 
     @Test
-    void upsert_createsScore_whenNoneExists() {
+    void upsert_delegatesToAtomicUpsert_andReturnsPersistedScore() {
         projectOwned();
         criterionAndOptionResolve();
+        Score persisted = new Score();
+        persisted.setValue(new BigDecimal("4.5"));
+        persisted.setNote("correct");
         when(scoreRepository.findByCriterionIdAndOptionId(criterionId, optionId))
-                .thenReturn(Optional.empty());
-        when(scoreRepository.save(any(Score.class))).thenAnswer(inv -> inv.getArgument(0));
+                .thenReturn(Optional.of(persisted));
 
         Score result = scoreService.upsert(user, projectId, criterionId, optionId, request("4.5", "correct"));
 
-        assertThat(result.getValue()).isEqualByComparingTo("4.5");
-        assertThat(result.getNote()).isEqualTo("correct");
-        assertThat(result.getCriterion()).isNotNull();
-        assertThat(result.getOption()).isNotNull();
+        assertThat(result).isSameAs(persisted);
+        ArgumentCaptor<BigDecimal> value = ArgumentCaptor.forClass(BigDecimal.class);
+        verify(scoreRepository).upsert(any(UUID.class), eq(criterionId), eq(optionId),
+                value.capture(), eq("correct"));
+        assertThat(value.getValue()).isEqualByComparingTo("4.5");
     }
 
     @Test
-    void upsert_updatesExistingScore_inPlace() {
+    void upsert_passesNullValue_meaningNotYetScored() {
         projectOwned();
         criterionAndOptionResolve();
-        Score existing = new Score();
-        existing.setValue(new BigDecimal("2.0"));
-        existing.setNote("ancien");
         when(scoreRepository.findByCriterionIdAndOptionId(criterionId, optionId))
-                .thenReturn(Optional.of(existing));
-        when(scoreRepository.save(any(Score.class))).thenAnswer(inv -> inv.getArgument(0));
+                .thenReturn(Optional.of(new Score()));
 
-        Score result = scoreService.upsert(user, projectId, criterionId, optionId, request("3.5", "maj"));
+        scoreService.upsert(user, projectId, criterionId, optionId, request(null, null));
 
-        assertThat(result).isSameAs(existing);
-        assertThat(result.getValue()).isEqualByComparingTo("3.5");
-        assertThat(result.getNote()).isEqualTo("maj");
-    }
-
-    @Test
-    void upsert_allowsNullValue_meaningNotYetScored() {
-        projectOwned();
-        criterionAndOptionResolve();
-        Score existing = new Score();
-        existing.setValue(new BigDecimal("4.0"));
-        when(scoreRepository.findByCriterionIdAndOptionId(criterionId, optionId))
-                .thenReturn(Optional.of(existing));
-        when(scoreRepository.save(any(Score.class))).thenAnswer(inv -> inv.getArgument(0));
-
-        Score result = scoreService.upsert(user, projectId, criterionId, optionId, request(null, null));
-
-        assertThat(result.getValue()).isNull();
+        verify(scoreRepository).upsert(any(UUID.class), eq(criterionId), eq(optionId),
+                eq(null), eq(null));
     }
 
     @Test
@@ -130,7 +115,7 @@ class ScoreServiceTest {
 
         assertThatThrownBy(() -> scoreService.upsert(user, projectId, criterionId, optionId, request("1.0", null)))
                 .isInstanceOf(ResourceNotFoundException.class);
-        verify(scoreRepository, never()).save(any());
+        verify(scoreRepository, never()).upsert(any(), any(), any(), any(), any());
     }
 
     @Test
@@ -141,7 +126,7 @@ class ScoreServiceTest {
 
         assertThatThrownBy(() -> scoreService.upsert(user, projectId, criterionId, optionId, request("1.0", null)))
                 .isInstanceOf(ResourceNotFoundException.class);
-        verify(scoreRepository, never()).save(any());
+        verify(scoreRepository, never()).upsert(any(), any(), any(), any(), any());
     }
 
     @Test
@@ -154,7 +139,7 @@ class ScoreServiceTest {
 
         assertThatThrownBy(() -> scoreService.upsert(user, projectId, criterionId, optionId, request("1.0", null)))
                 .isInstanceOf(ResourceNotFoundException.class);
-        verify(scoreRepository, never()).save(any());
+        verify(scoreRepository, never()).upsert(any(), any(), any(), any(), any());
     }
 
     @Test

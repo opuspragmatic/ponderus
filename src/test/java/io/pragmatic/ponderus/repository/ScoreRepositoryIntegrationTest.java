@@ -126,6 +126,39 @@ class ScoreRepositoryIntegrationTest extends AbstractPostgresIntegrationTest {
     }
 
     @Test
+    void upsert_insertsThenUpdatesInPlace_withoutDuplicate() {
+        seedProjectGraph();
+        em.flush();
+
+        UUID firstId = UUID.randomUUID();
+        scoreRepository.upsert(firstId, criterion.getId(), option.getId(), new BigDecimal("4.5"), "a");
+        scoreRepository.upsert(UUID.randomUUID(), criterion.getId(), option.getId(), new BigDecimal("2.0"), "b");
+        em.clear();
+
+        List<Score> scores = scoreRepository.findByProjectId(project.getId());
+        assertThat(scores).hasSize(1);
+        assertThat(scores.get(0).getValue()).isEqualByComparingTo("2.0");
+        assertThat(scores.get(0).getNote()).isEqualTo("b");
+        // ON CONFLICT DO UPDATE : la ligne (et son id) d'origine est conservée.
+        assertThat(scores.get(0).getId()).isEqualTo(firstId);
+    }
+
+    @Test
+    void upsert_canSetValueBackToNull() {
+        seedProjectGraph();
+        em.flush();
+
+        scoreRepository.upsert(UUID.randomUUID(), criterion.getId(), option.getId(), new BigDecimal("4.5"), null);
+        scoreRepository.upsert(UUID.randomUUID(), criterion.getId(), option.getId(), null, "remis a null");
+        em.clear();
+
+        Score reloaded = scoreRepository.findByCriterionIdAndOptionId(criterion.getId(), option.getId())
+                .orElseThrow();
+        assertThat(reloaded.getValue()).isNull();
+        assertThat(reloaded.getNote()).isEqualTo("remis a null");
+    }
+
+    @Test
     void findByProjectId_isScopedToProject() {
         seedProjectGraph();
         em.persist(newScore(criterion, option, "4.5"));
