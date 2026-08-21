@@ -49,7 +49,7 @@ public class Project {
     private Instant createdAt;
 
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<ComparisonOption> options = new ArrayList<>();
+    private List<Option> options = new ArrayList<>();
 
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Criterion> criteria = new ArrayList<>();

@@ -41,7 +41,7 @@ public class Score {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "option_id", nullable = false)
-    private ComparisonOption option;
+    private Option option;
 
     private BigDecimal value;
 
