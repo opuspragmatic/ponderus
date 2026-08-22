@@ -34,6 +34,18 @@ public class OptionService {
         return optionRepository.findByProjectIdOrderByPositionAscIdAsc(projectId);
     }
 
+    /**
+     * Charge une option scopée par utilisateur : vérifie que le projet appartient
+     * à l'appelant, puis que l'option appartient bien au projet. 404 sinon.
+     * Point d'entrée unique réutilisé par les autres opérations et services.
+     */
+    @Transactional(readOnly = true)
+    public Option findOne(User user, UUID projectId, UUID optionId) {
+        projectService.findOne(user, projectId);
+        return optionRepository.findByIdAndProjectId(optionId, projectId)
+                .orElseThrow(() -> new ResourceNotFoundException("Option introuvable : " + optionId));
+    }
+
     @Transactional
     public Option create(User user, UUID projectId, OptionRequest request) {
         Project project = projectService.findOne(user, projectId);
@@ -53,8 +65,7 @@ public class OptionService {
 
     @Transactional
     public Option update(User user, UUID projectId, UUID optionId, OptionRequest request) {
-        projectService.findOne(user, projectId);
-        Option option = requireOption(projectId, optionId);
+        Option option = findOne(user, projectId, optionId);
 
         option.setName(request.name());
         if (request.position() != null) {
@@ -65,15 +76,8 @@ public class OptionService {
 
     @Transactional
     public void delete(User user, UUID projectId, UUID optionId) {
-        projectService.findOne(user, projectId);
-        Option option = requireOption(projectId, optionId);
+        Option option = findOne(user, projectId, optionId);
         // La suppression cascade sur les scores associés (FK ON DELETE CASCADE).
         optionRepository.delete(option);
-    }
-
-    /** Charge l'option si elle appartient bien au projet, sinon 404. */
-    private Option requireOption(UUID projectId, UUID optionId) {
-        return optionRepository.findByIdAndProjectId(optionId, projectId)
-                .orElseThrow(() -> new ResourceNotFoundException("Option introuvable : " + optionId));
     }
 }

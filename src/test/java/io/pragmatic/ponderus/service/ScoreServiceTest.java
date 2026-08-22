@@ -26,8 +26,6 @@ import io.pragmatic.ponderus.domain.Project;
 import io.pragmatic.ponderus.domain.Score;
 import io.pragmatic.ponderus.domain.User;
 import io.pragmatic.ponderus.dto.ScoreRequest;
-import io.pragmatic.ponderus.repository.CriterionRepository;
-import io.pragmatic.ponderus.repository.OptionRepository;
 import io.pragmatic.ponderus.repository.ScoreRepository;
 import io.pragmatic.ponderus.web.ResourceNotFoundException;
 
@@ -38,13 +36,13 @@ class ScoreServiceTest {
     private ScoreRepository scoreRepository;
 
     @Mock
-    private CriterionRepository criterionRepository;
-
-    @Mock
-    private OptionRepository optionRepository;
-
-    @Mock
     private ProjectService projectService;
+
+    @Mock
+    private CriterionService criterionService;
+
+    @Mock
+    private OptionService optionService;
 
     @InjectMocks
     private ScoreService scoreService;
@@ -59,17 +57,9 @@ class ScoreServiceTest {
     private final UUID criterionId = UUID.randomUUID();
     private final UUID optionId = UUID.randomUUID();
 
-    private void projectOwned() {
-        Project project = new Project();
-        project.setUser(user);
-        when(projectService.findOne(user, projectId)).thenReturn(project);
-    }
-
     private void criterionAndOptionResolve() {
-        when(criterionRepository.findByIdAndProjectId(criterionId, projectId))
-                .thenReturn(Optional.of(new Criterion()));
-        when(optionRepository.findByIdAndProjectId(optionId, projectId))
-                .thenReturn(Optional.of(new Option()));
+        when(criterionService.findOne(user, projectId, criterionId)).thenReturn(new Criterion());
+        when(optionService.findOne(user, projectId, optionId)).thenReturn(new Option());
     }
 
     private ScoreRequest request(String value, String note) {
@@ -78,7 +68,6 @@ class ScoreServiceTest {
 
     @Test
     void upsert_delegatesToAtomicUpsert_andReturnsPersistedScore() {
-        projectOwned();
         criterionAndOptionResolve();
         Score persisted = new Score();
         persisted.setValue(new BigDecimal("4.5"));
@@ -97,7 +86,6 @@ class ScoreServiceTest {
 
     @Test
     void upsert_passesNullValue_meaningNotYetScored() {
-        projectOwned();
         criterionAndOptionResolve();
         when(scoreRepository.findByCriterionIdAndOptionId(criterionId, optionId))
                 .thenReturn(Optional.of(new Score()));
@@ -109,9 +97,9 @@ class ScoreServiceTest {
     }
 
     @Test
-    void upsert_throwsNotFound_whenProjectNotOwned() {
-        when(projectService.findOne(user, projectId))
-                .thenThrow(new ResourceNotFoundException("Projet introuvable"));
+    void upsert_throwsNotFound_whenCriterionCheckFails() {
+        when(criterionService.findOne(user, projectId, criterionId))
+                .thenThrow(new ResourceNotFoundException("Critère introuvable"));
 
         assertThatThrownBy(() -> scoreService.upsert(user, projectId, criterionId, optionId, request("1.0", null)))
                 .isInstanceOf(ResourceNotFoundException.class);
@@ -119,23 +107,10 @@ class ScoreServiceTest {
     }
 
     @Test
-    void upsert_throwsNotFound_whenCriterionNotInProject() {
-        projectOwned();
-        when(criterionRepository.findByIdAndProjectId(criterionId, projectId))
-                .thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> scoreService.upsert(user, projectId, criterionId, optionId, request("1.0", null)))
-                .isInstanceOf(ResourceNotFoundException.class);
-        verify(scoreRepository, never()).upsert(any(), any(), any(), any(), any());
-    }
-
-    @Test
-    void upsert_throwsNotFound_whenOptionNotInProject() {
-        projectOwned();
-        when(criterionRepository.findByIdAndProjectId(criterionId, projectId))
-                .thenReturn(Optional.of(new Criterion()));
-        when(optionRepository.findByIdAndProjectId(optionId, projectId))
-                .thenReturn(Optional.empty());
+    void upsert_throwsNotFound_whenOptionCheckFails() {
+        when(criterionService.findOne(user, projectId, criterionId)).thenReturn(new Criterion());
+        when(optionService.findOne(user, projectId, optionId))
+                .thenThrow(new ResourceNotFoundException("Option introuvable"));
 
         assertThatThrownBy(() -> scoreService.upsert(user, projectId, criterionId, optionId, request("1.0", null)))
                 .isInstanceOf(ResourceNotFoundException.class);

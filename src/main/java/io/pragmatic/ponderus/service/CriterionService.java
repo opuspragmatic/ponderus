@@ -34,6 +34,18 @@ public class CriterionService {
         return criterionRepository.findByProjectIdOrderByPositionAscIdAsc(projectId);
     }
 
+    /**
+     * Charge un critère scopé par utilisateur : vérifie que le projet appartient
+     * à l'appelant, puis que le critère appartient bien au projet. 404 sinon.
+     * Point d'entrée unique réutilisé par les autres opérations et services.
+     */
+    @Transactional(readOnly = true)
+    public Criterion findOne(User user, UUID projectId, UUID criterionId) {
+        projectService.findOne(user, projectId);
+        return criterionRepository.findByIdAndProjectId(criterionId, projectId)
+                .orElseThrow(() -> new ResourceNotFoundException("Critère introuvable : " + criterionId));
+    }
+
     @Transactional
     public Criterion create(User user, UUID projectId, CriterionRequest request) {
         Project project = projectService.findOne(user, projectId);
@@ -55,8 +67,7 @@ public class CriterionService {
 
     @Transactional
     public Criterion update(User user, UUID projectId, UUID criterionId, CriterionRequest request) {
-        projectService.findOne(user, projectId);
-        Criterion criterion = requireCriterion(projectId, criterionId);
+        Criterion criterion = findOne(user, projectId, criterionId);
 
         criterion.setLabel(request.label());
         criterion.setWeight(request.weight());
@@ -69,15 +80,8 @@ public class CriterionService {
 
     @Transactional
     public void delete(User user, UUID projectId, UUID criterionId) {
-        projectService.findOne(user, projectId);
-        Criterion criterion = requireCriterion(projectId, criterionId);
+        Criterion criterion = findOne(user, projectId, criterionId);
         // La suppression cascade sur les scores associés (FK ON DELETE CASCADE).
         criterionRepository.delete(criterion);
-    }
-
-    /** Charge le critère s'il appartient bien au projet, sinon 404. */
-    private Criterion requireCriterion(UUID projectId, UUID criterionId) {
-        return criterionRepository.findByIdAndProjectId(criterionId, projectId)
-                .orElseThrow(() -> new ResourceNotFoundException("Critère introuvable : " + criterionId));
     }
 }
