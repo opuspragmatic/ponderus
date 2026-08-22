@@ -46,6 +46,9 @@ dependencies {
     // Monitoring
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     
+    // documentation
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.3'
+
     // Tests
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.security:spring-security-test'
